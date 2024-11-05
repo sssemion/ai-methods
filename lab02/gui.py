@@ -1,72 +1,64 @@
-import enum
-from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Literal
 
 import streamlit as st
 
-
-class BaseMessage(ABC):
-    """Базовый класс сообщения"""
-
-    class Alignment(enum.StrEnum):
-        LEFT = 'left'
-        RIGHT = 'right'
-
-    TEXT_ALIGN: Alignment = Alignment.LEFT
-
-    def __init__(self, text: str, ts: datetime | None = None):
-        self.text = text
-        self.ts = ts or datetime.now()
-
-    @property
-    @abstractmethod
-    def NAME(self) -> str:
-        pass
-
-    @property
-    @abstractmethod
-    def BG_COLOR(self) -> str:
-        pass
-
-    def format(self) -> str:
-        """Форматирует сообщение и возвращает html представление для вывода через `st.markdown()`"""
-        return f'''
-        <div style="text-align: {self.TEXT_ALIGN}; background-color: {self.BG_COLOR}; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
-            <span style="font-weight: bold;">{self.NAME}:</span> {self.text}<br>
-            <span style="font-size: small;">{self.ts.strftime('%H:%M')}</span>
-        </div>
-        '''
+from lab02.services.const import MODELS, GENERATIVE_PARAMS, BASE_TEXT
 
 
-class UserMessage(BaseMessage):
-    """Пользовательское сообщение"""
-    BG_COLOR = 'rgb(28 142 179)'
-    TEXT_ALIGN = BaseMessage.Alignment.RIGHT
-    NAME = 'Вы'
+@dataclass
+class Message:
+    name: str
+    avatar: Literal['user', 'assistant']
+    text: str
+    ts: datetime = field(default_factory=datetime.now)
+    meta: str | None = None
 
 
-class GPTMessage(BaseMessage):
-    """Сообщение от GPT-модели"""
-    BG_COLOR = '#888888'
-    NAME = 'Модель'
-
-
-def main():
+def gui() -> None:
     """Инициализирует графический интерфейс на streamlit"""
-    st.session_state.setdefault('messages', list[BaseMessage]())
+    sidebar()
+    st.session_state.setdefault('messages', [])
     st.title('Чат с ruGPT-3 от SberDevices')
-    st.text_input('Введите ваше сообщение:', key='user_input', on_change=message_handler)
+    user_input = st.chat_input('Введите сообщение:', key='user_input')
+
     for message in st.session_state['messages']:
-        st.markdown(message.format(), unsafe_allow_html=True)
+        write_message(message)
+
+    if user_input:
+        user_message = Message('Вы', 'user', user_input)
+        write_message(user_message)
+        st.session_state['messages'].append(user_message)
+
+        with st.spinner():
+            model = MODELS[st.session_state['model_name']]
+            params = {param_key: st.session_state[param_key] for param_key in GENERATIVE_PARAMS}
+            gpt_message = Message(model.MODEL_NAME, 'assistant', model.send_message(user_input, **params), meta=params)
+            st.session_state['messages'].append(gpt_message)
+            write_message(gpt_message)
 
 
-def message_handler():
-    """Обработчик сообщения, вызываемый по нажатию кнопки `отправить`"""
-    if st.session_state['user_input']:
-        st.session_state['messages'].append(UserMessage(st.session_state['user_input']))
-        st.session_state['messages'].append(GPTMessage(st.session_state['user_input']))
-        st.session_state['user_input'] = ''
+# def init_messages():
 
+def write_message(message: Message) -> None:
+    with st.chat_message(name=message.name, avatar=message.avatar):
+        st.write(message.text)
+        st.caption(f'{message.name}, {message.ts.strftime("%H:%M:%S")}')
+        if message.meta:
+            st.caption(message.meta)
+
+def sidebar():
+    with st.sidebar:
+        st.selectbox('Модель', options=MODELS.keys(), index=0, key='model_name')
+        for param_name, param_spec in GENERATIVE_PARAMS.items():
+            st.slider(param_name,
+                      min_value=param_spec.min,
+                      max_value=param_spec.max,
+                      step=param_spec.step,
+                      value=param_spec.default,
+                      key=param_name,
+                      )
 
 if __name__ == '__main__':
-    main()
+    gui()
