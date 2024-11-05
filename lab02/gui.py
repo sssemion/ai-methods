@@ -24,31 +24,46 @@ def gui() -> None:
     user_input = st.chat_input('Введите сообщение:', key='user_input')
 
     for message in st.session_state['messages']:
-        write_message(message)
+        with st.chat_message(name=message.name, avatar=message.avatar):
+            render_message(message)
+
+    init_message_if_needed()
 
     if user_input:
-        user_message = Message('Вы', 'user', user_input)
-        write_message(user_message)
-        st.session_state['messages'].append(user_message)
+        send_message(user_input)
 
-        with st.spinner():
-            model = MODELS[st.session_state['model_name']]
-            params = {param_key: st.session_state[param_key] for param_key in GENERATIVE_PARAMS}
-            gpt_message = Message(model.MODEL_NAME, 'assistant', model.send_message(user_input, **params), meta=params)
-            st.session_state['messages'].append(gpt_message)
-            write_message(gpt_message)
+def init_message_if_needed():
+    if not st.session_state.get('initialized', False):
+        send_message(BASE_TEXT)
+        st.session_state['initialized'] = True
 
 
-# def init_messages():
+def send_message(text: str) -> None:
+    """Обработчик отправки сообщения пользователем"""
+    user_message = Message('Вы', 'user', text)
+    with st.chat_message(name=user_message.name, avatar=user_message.avatar):
+        render_message(user_message)
+    st.session_state['messages'].append(user_message)
 
-def write_message(message: Message) -> None:
-    with st.chat_message(name=message.name, avatar=message.avatar):
-        st.write(message.text)
-        st.caption(f'{message.name}, {message.ts.strftime("%H:%M:%S")}')
-        if message.meta:
-            st.caption(message.meta)
+    name = st.session_state['model_name']
+    avatar = 'assistant'
+    with st.chat_message(name=name, avatar=avatar), st.spinner():
+        model = MODELS[name]
+        params = {param_key: st.session_state[param_key] for param_key in GENERATIVE_PARAMS}
+        gpt_message = Message(name, avatar, model.send_message(text, **params), meta=str(params))
+        st.session_state['messages'].append(gpt_message)
+        render_message(gpt_message)
+
+
+def render_message(message: Message) -> None:
+    """Отрисовывает контент сообщения на экране"""
+    st.write(message.text)
+    st.caption(f'{message.name}, {message.ts.strftime("%H:%M:%S")}')
+    if message.meta:
+        st.caption(message.meta)
 
 def sidebar():
+    """Инициализирует боковую панель с параметрами генерации"""
     with st.sidebar:
         st.selectbox('Модель', options=MODELS.keys(), index=0, key='model_name')
         for param_name, param_spec in GENERATIVE_PARAMS.items():
