@@ -33,6 +33,7 @@ def gui() -> None:
         send_message(user_input)
 
 def init_message_if_needed():
+    """Отправляет начальное подготовленное сообщение при первой загрузке приложения"""
     if not st.session_state.get('initialized', False):
         send_message(BASE_TEXT)
         st.session_state['initialized'] = True

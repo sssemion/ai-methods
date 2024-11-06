@@ -13,6 +13,7 @@ T = TypeVar('T', int, float)
 
 @dataclass
 class ParamSpec(Generic[T]):
+    """Конфиг параметра генерации"""
     min: T
     max: T
     step: T
