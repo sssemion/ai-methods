@@ -3,6 +3,8 @@ from lab04.lib.client.yandex import YandexFoundationModelsClient
 
 
 class LlamaClient(YandexFoundationModelsClient):
+    """Клиент к LLaMa 3.1 8B (Yandex Foundation Models)"""
+
     name = 'LLaMa 3.1 8B'
     model = 'llama-lite/latest'
 

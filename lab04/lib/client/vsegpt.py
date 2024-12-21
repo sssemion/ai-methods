@@ -6,7 +6,12 @@ from lab04.lib.client.abc import BaseLLMClient
 
 
 class VsegptClient(BaseLLMClient, ABC):
-    """Абстрактный клиент к VseGpt API"""
+    """
+    Абстрактный клиент к VseGpt API
+
+    Vsegpt - сервис-агрегатор, который позволяет подключиться к chatGPT и другим современным нейросетям для генерации
+    текста
+    """
 
     URL = 'https://api.vsegpt.ru/v1/chat/completions'
 

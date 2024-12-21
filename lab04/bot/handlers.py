@@ -114,6 +114,7 @@ async def to_result(message: Message, state: FSMContext) -> None:
 
 
 async def make_request_and_send_message(message: Message, state: FSMContext, service: LlmService) -> None:
+    """Генерирует ответ через service, обогащает мета-информацией и отправляет пользователю"""
     data = await state.get_data()
     start = monotonic()
     result = await service.search_vehicles(**data)
